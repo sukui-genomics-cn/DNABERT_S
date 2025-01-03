@@ -1,7 +1,14 @@
+import logging
 import os
 import csv
+import pickle
+import numpy as np
+import random
+
+import torch
 import torch.utils.data as util_data
 from torch.utils.data import Dataset
+from transformers import PreTrainedTokenizerBase, DataCollatorForLanguageModeling
 
 
 class PairSamples(Dataset):
@@ -59,7 +66,7 @@ class GeneStructureDataset(Dataset):
             seed: int = 42,
             **kwargs
     ):
-        super(T2TDataset, self).__init__()
+        super(GeneStructureDataset, self).__init__()
         np.random.seed(seed)
         random.seed(seed)
 
@@ -84,7 +91,7 @@ class GeneStructureDataset(Dataset):
         self.tokenizer: PreTrainedTokenizerBase = tokenizer
         self.mlm = kwargs.get("mlm", False)
         self.mlm_probability = kwargs.get("mlm_probability", 0.15)
-        self.label_name = self.get_label_name
+        # self.label_name = self.get_label_name
         self._data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=self.mlm,
                                                               mlm_probability=self.mlm_probability)
 
@@ -97,9 +104,34 @@ class GeneStructureDataset(Dataset):
         # TODO down sample with 0.5%
         assert "seq" in data, f"seq not in data: {data.keys()}"
         seq = data["seq"][:self.max_length]
-        seq_ids = self.tokenizer(seq)["input_ids"]
 
         return {
-            "input_ids": seq_ids,
+            "input_ids": seq,
             # 'labels': seq_ids,
         }
+
+
+class GeneStructureContrastDataset(GeneStructureDataset):
+
+    def __getitem__(self, idx):
+        seq_file1 = self.sequences[idx]
+        seq_file2 = self.sequences[np.random.choice(len(self.sequences), 1, replace=False)[0]]
+        with open(seq_file1, "rb") as f:
+            data1 = pickle.load(f)
+            assert "seq" in data1, f"seq not in data: {data1.keys()}"
+            seq1 = data1["seq"][:self.max_length]
+            # seq1_ids = self.tokenizer(seq1)["input_ids"]
+        with open(seq_file2, "rb") as f:
+            data2 = pickle.load(f)
+            assert "seq" in data2, f"seq not in data: {data2.keys()}"
+            seq2 = data2["seq"][:self.max_length]
+            # seq2_ids = self.tokenizer(seq2)["input_ids"]
+        # TODO down sample with 0.5%
+        seq1_type = os.path.basename(seq_file1).split("_")[0]
+        seq2_type = os.path.basename(seq_file2).split("_")[0]
+        if seq1_type == seq2_type:
+            pairsmi = torch.tensor(1, dtype=torch.long)
+        else:
+            pairsmi = torch.tensor(0, dtype=torch.long)
+
+        return {'seq1': seq1, 'seq2': seq2, 'pairsimi': pairsmi}

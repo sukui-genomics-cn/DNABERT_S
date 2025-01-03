@@ -6,9 +6,10 @@ import numpy as np
 import random
 import torch
 import torch.nn as nn
-from textaugment import EDA
+# from textaugment import EDA
+from safetensors import safe_open
 from tqdm import tqdm
-from utils.contrastive_utils import HardConLoss, iMIXConLoss
+from utils.contrastive_utils import HardConLoss, iMIXConLoss, PairHardConLoss
 
 class Trainer(nn.Module):
     def __init__(self, model, tokenizer, optimizer, train_loader, val_loader, args):
@@ -21,8 +22,9 @@ class Trainer(nn.Module):
         self.val_loader = val_loader
         self.gstep = 0
         if args.con_method == 'mutate':
-            self.data_mutate = EDA()
+            self.data_mutate = None
         self.hard_loss = HardConLoss(temperature=self.args.temperature).cuda()
+        self.pair_hard_loss = PairHardConLoss(temperature=self.args.temperature).cuda()
         self.imix_loss = iMIXConLoss(temperature=self.args.temperature).cuda()
         self.curriculum = args.curriculum
 
@@ -125,7 +127,7 @@ class Trainer(nn.Module):
         with torch.autocast(device_type="cuda"):
             if (not self.args.mix) or (self.curriculum & curriculum_not_start):
                 feat1, feat2, _, _ = self.model(input_ids, attention_mask, mix=False)
-                losses = self.hard_loss(feat1, feat2, pairsimi)
+                losses = self.pair_hard_loss(feat1, feat2, pairsimi)
                 loss = losses["instdisc_loss"]
             else:
                 if self.args.mix_layer_num != -1:
@@ -153,7 +155,13 @@ class Trainer(nn.Module):
                 if self.args.epochs >=3:
                     if (epoch >= int(self.args.epochs/3)) & (epoch < int(self.args.epochs/3)+1):
                         load_dir = os.path.join(self.args.resPath, str(self.last_saved_step))
-                        self.model.module.dnabert2.load_state_dict(torch.load(load_dir+'/pytorch_model.bin'))
+                        if os.path.exists(load_dir):
+                            os.makedirs(load_dir, exist_ok=True)
+                        state_dict = {}
+                        with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
+                            for key in f.keys():
+                                state_dict[key] = f.get_tensor(key)
+                        self.model.module.dnabert2.load_state_dict(state_dict)
                         self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
                         print('Curriculum learning: load model trained with stage I')
                     for j, batch in enumerate(epoch_iterator):
@@ -186,7 +194,11 @@ class Trainer(nn.Module):
         best_val_loss = 10000
         for step in range(self.args.logging_step, np.min([self.all_iter, self.args.logging_step*self.args.logging_num+1]), self.args.logging_step):
             load_dir = os.path.join(self.args.resPath, str(step))
-            self.model.module.dnabert2.load_state_dict(torch.load(load_dir+'/pytorch_model.bin'))
+            state_dict = {}
+            with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
+                for key in f.keys():
+                    state_dict[key] = f.get_tensor(key)
+            self.model.module.dnabert2.load_state_dict(state_dict)
             self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
             val_loss = 0.
             for j, batch in enumerate(self.val_loader):
@@ -194,7 +206,7 @@ class Trainer(nn.Module):
                     input_ids, attention_mask, pairsimi = self.prepare_pairwise_input(batch)
                     with torch.autocast(device_type="cuda"):
                         feat1, feat2, _, _ = self.model(input_ids, attention_mask, mix=False)
-                        losses = self.hard_loss(feat1, feat2, pairsimi)
+                        losses = self.pair_hard_loss(feat1, feat2, pairsimi)
                         val_loss += losses["instdisc_loss"]
             val_loss = val_loss.item()/(j+1)
             if val_loss < best_val_loss:
