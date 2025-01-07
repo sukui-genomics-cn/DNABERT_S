@@ -9,14 +9,14 @@ export CUDA_VISIBLE_DEVICES=1
 python main_t2t.py \
     --resdir $PATH_TO_RESULT_DICT \
     --datapath $PATH_TO_DATA_DICT \
-    --train_dataname inter_intron_cds_chunks_1998 \
-    --val_dataname inter_intron_cds_chunks_1998 \
+    --train_dataname inter_intron_cds_sample_chunks_1998 \
+    --val_dataname inter_intron_cds_sample_chunks_1998 \
     --seed 1 \
     --logging_step 10000 \
     --logging_num 12 \
     --max_length 2000 \
-    --train_batch_size 2 \
-    --val_batch_size 2 \
+    --train_batch_size 4 \
+    --val_batch_size 4 \
     --lr 3e-06 \
     --lr_scale 100 \
     --epochs 3 \

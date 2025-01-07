@@ -1,4 +1,5 @@
-from __future__ import print_function
+# from __future__ import logging.info_function
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -36,6 +37,13 @@ class HardConLoss(nn.Module):
         Ng = (negimp * neg).sum(dim=-1) / negimp.mean(dim=-1)
         loss_pos = (-posmask * torch.log(pos / (Ng + pos))).sum() / posmask.sum()
         losses["instdisc_loss"] = loss_pos
+
+        # logging.info(f"{__class__.__name__} loss: {loss_pos.item()}")
+        # if torch.isnan(loss_pos):
+        #     logging.info("pos", pos)
+        #     logging.info("neg", neg)
+        #     logging.info("Ng", Ng)
+        #     logging.info("loss_pos", loss_pos)
         return losses
 
 
@@ -48,6 +56,7 @@ class PairHardConLoss(HardConLoss):
         negmask = (pairsimi != 1).detach()
 
         cosine_simi = F.cosine_similarity(features_1, features_2, dim=-1, eps=self.eps)
+        cosine_simi = torch.abs(cosine_simi)
         pos = cosine_simi.masked_select(posmask).mean()  # 0~1
         neg = cosine_simi.masked_select(negmask).mean()  # 0~1
         if posmask.sum().item() == 0:
@@ -56,6 +65,11 @@ class PairHardConLoss(HardConLoss):
             loss_pos = -1 * torch.log(pos)
         else:
             loss_pos = -1 * torch.log(pos / (neg + pos))
+        # logging.info(f"{__class__.__name__} loss: {loss_pos.item()}")
+        # if torch.isnan(loss_pos):
+        #     logging.info("pos", pos)
+        #     logging.info("neg", neg)
+        #     logging.info("loss_pos", loss_pos)
         losses["instdisc_loss"] = loss_pos
         return losses
 
@@ -86,6 +100,11 @@ class iMIXConLoss(nn.Module):
         output = torch.log(pos / (Ng + pos))
         output_rand = torch.log(pos_rand / (Ng + pos))
         loss_pos = -(mix_lambda * output + (1. - mix_lambda) * output_rand).mean()
-
+        # logging.info(f"{__class__.__name__} loss: {loss_pos.item()}")
+        # if torch.isnan(loss_pos):
+        #     logging.info("pos", pos)
+        #     logging.info("neg", neg)
+        #     logging.info("Ng", Ng)
+        #     logging.info("loss_pos", loss_pos)
         losses["instdisc_loss"] = loss_pos
         return losses

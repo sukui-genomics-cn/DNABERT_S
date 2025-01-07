@@ -102,7 +102,6 @@ class GeneStructureDataset(Dataset):
         with open(self.sequences[idx], "rb") as f:
             data = pickle.load(f)
         label = os.path.basename(self.sequences[idx]).split("_")[-1].split(".")[0]
-
         # TODO down sample with 0.5%
         assert "seq" in data, f"seq not in data: {data.keys()}"
         seq = data["seq"][:self.max_length]
@@ -129,9 +128,8 @@ class GeneStructureContrastDataset(GeneStructureDataset):
             seq2 = data2["seq"][:self.max_length]
             # seq2_ids = self.tokenizer(seq2)["input_ids"]
         # TODO down sample with 0.5%
-        seq1_type = os.path.basename(seq_file1).split("_")[-1].split(".")[0]
-        seq2_type = os.path.basename(seq_file2).split("_")[-1].split(".")[0]
-        # print(f"seq1: {seq1_type}, seq2: {seq2_type}")
+        seq1_type = os.path.basename(seq_file1).split("_")[0]
+        seq2_type = os.path.basename(seq_file2).split("_")[0]
         if seq1_type == seq2_type:
             pairsmi = torch.tensor(1, dtype=torch.long)
         else:

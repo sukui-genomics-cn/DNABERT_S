@@ -20,7 +20,7 @@ from transformers.modeling_outputs import (MaskedLMOutput,
                                            SequenceClassifierOutput)
 from transformers.models.bert.modeling_bert import BertPreTrainedModel
 
-from .bert_padding import (index_first_axis,
+from model_codes.bert_padding import (index_first_axis,
                                             index_put_first_axis, pad_input,
                                             unpad_input, unpad_input_only)
 

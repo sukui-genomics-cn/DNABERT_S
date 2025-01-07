@@ -8,7 +8,10 @@ import os
 
 from scipy.optimize import linear_sum_assignment
 
-def get_embedding(dna_sequences, 
+from model_codes.bert_layers import BertModel
+
+
+def get_embedding(dna_sequences,
                   model, 
                   species, 
                   sample, 
@@ -70,7 +73,7 @@ def get_embedding(dna_sequences,
         elif model == "test":
             embedding = calculate_llm_embedding(dna_sequences, 
                                                 model_name_or_path=test_model_dir, 
-                                                model_max_length=5000,
+                                                model_max_length=2000,
                                                 batch_size=batch_size,)
         else:
             raise ValueError(f"Unknown model {model}")
@@ -164,7 +167,7 @@ def calculate_llm_embedding(dna_sequences, model_name_or_path, model_max_length=
             trust_remote_code=True,
         ) 
     else:
-        model = transformers.AutoModel.from_pretrained(
+        model = BertModel.from_pretrained(
                 model_name_or_path,
                 trust_remote_code=True,
             )
@@ -193,7 +196,7 @@ def calculate_llm_embedding(dna_sequences, model_name_or_path, model_max_length=
                 model_output = model.forward(input_ids=input_ids)[0].detach().cpu()
             else:
                 model_output = model.forward(input_ids=input_ids, attention_mask=attention_mask)[0].detach().cpu()
-                
+            print(model_output)
             attention_mask = attention_mask.unsqueeze(-1).detach().cpu()
             embedding = torch.sum(model_output*attention_mask, dim=1) / torch.sum(attention_mask, dim=1)
             

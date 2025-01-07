@@ -9,7 +9,7 @@ import torch.nn as nn
 # from textaugment import EDA
 from safetensors import safe_open
 from tqdm import tqdm
-from utils.contrastive_utils import HardConLoss, iMIXConLoss, PairHardConLoss
+from train_utils.contrastive_utils import HardConLoss, iMIXConLoss, PairHardConLoss
 
 class Trainer(nn.Module):
     def __init__(self, model, tokenizer, optimizer, train_loader, val_loader, args):
@@ -170,6 +170,7 @@ class Trainer(nn.Module):
                             losses = self.train_step(input_ids, attention_mask, pairsimi)
                         else:
                             losses = self.train_step(input_ids, attention_mask, pairsimi, curriculum_not_start=False)
+                        print(f"Epoch: {epoch}, Iteration: {j}, Loss: {losses['instdisc_loss']:.4f}")
                         if self.gstep%self.args.logging_step==0:
                             self.save_model(step=self.gstep)
                         if self.gstep > self.args.logging_step*self.args.logging_num:
