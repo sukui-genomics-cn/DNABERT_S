@@ -16,7 +16,7 @@ import torch.nn as nn
 from transformers import AutoTokenizer
 
 from training import Trainer
-from dataloader.dataloader import GeneStructureContrastDataset
+from dataloader.dataloader import GeneStructureContrastDataset, GeneStructureContrastTripleDataset
 from train_utils.utils import set_global_random_seed, setup_path
 from train_utils.optimizer import get_optimizer
 from models.dnabert_s import DNABert_S
@@ -27,6 +27,7 @@ def run(args):
     set_global_random_seed(args.seed)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Device: ", device)
     device_id = torch.cuda.device_count()
     print("\t {} GPUs available to use!".format(device_id))
 
@@ -36,14 +37,14 @@ def run(args):
     '''
     tokenizer = AutoTokenizer.from_pretrained("/home/share/huadjyin/home/s_sukui/02_data/01_model/DNABERT-2-117M/",
                                               trust_remote_code=True)
-    train_dataset = GeneStructureContrastDataset(
+    train_dataset = GeneStructureContrastTripleDataset(
         dest_path=args.datapath,
         dataset_name=args.train_dataname,
         tokenizer=tokenizer,
         split='train',
         max_length=args.max_length
     )
-    val_dataset = GeneStructureContrastDataset(
+    val_dataset = GeneStructureContrastTripleDataset(
         tokenizer=tokenizer,
         dest_path=args.datapath,
         dataset_name=args.val_dataname,
@@ -56,6 +57,8 @@ def run(args):
 
     model = DNABert_S(feat_dim=args.feat_dim, mix=args.mix, model_mix_dict=args.dnabert2_mix_dict,
                       curriculum=args.curriculum)
+    print(model)
+
     optimizer = get_optimizer(model, args)
     model = nn.DataParallel(model)
     model.to(device)

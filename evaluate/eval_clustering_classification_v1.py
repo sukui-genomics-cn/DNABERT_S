@@ -31,7 +31,7 @@ def main(args):
     for model in model_list:
         for species in ["inter_intron_cds_sample_chunks_1998"]:
             max_length = 10000 if species == "reference" else 20000
-            for sample in ["test"]:
+            for sample in ["train"]:
                 if species == "reference" and sample > 1:
                     continue
                 sample = str(sample)
@@ -111,39 +111,39 @@ def main(args):
                     embedding_norm = embedding_norm[permutation]
                     embedding_standard = embedding_standard[permutation]
 
-                    for num_samples_per_class in [1, 2, 5, 10, 20]:
-                        is_train = np.zeros(len(labels))
-                        is_test = np.zeros(len(labels))
-                        for i in range(num_clusters):
-                            idx = np.where(labels == i)[0]
-                            is_train[idx[:num_samples_per_class]] = 1
-                            is_test[idx[-80:]] = 1
-                        is_train = is_train.astype(bool)
-                        is_test = is_test.astype(bool)
+                    # for num_samples_per_class in [1, 2, 5, 10, 20]:
+                    is_train = np.zeros(len(labels))
+                    is_test = np.zeros(len(labels))
+                    # for i in range(num_clusters):
+                    #     idx = np.where(labels == i)[0]
+                    is_train[:-100] = 1
+                    is_test[-100:] = 1
+                    is_train = is_train.astype(bool)
+                    is_test = is_test.astype(bool)
 
-                        embedding_train = embedding_standard[is_train]
-                        embedding_test = embedding_standard[is_test]
+                    embedding_train = embedding_standard[is_train]
+                    embedding_test = embedding_standard[is_test]
 
-                        # 1. Logistic Regression
-                        lr = LogisticRegression(random_state=random_seed,
-                                                max_iter=3000,
-                                                n_jobs=64,
-                                                solver="lbfgs",
-                                                penalty="l2",
-                                                C=0.5)
-                        lr.fit(embedding_train, labels[is_train])
-                        preds_lr = lr.predict(embedding_test)
-                        preds_train_lr = lr.predict(embedding_train)
+                    # 1. Logistic Regression
+                    lr = LogisticRegression(random_state=random_seed,
+                                            max_iter=3000,
+                                            n_jobs=64,
+                                            solver="lbfgs",
+                                            penalty="l2",
+                                            C=0.5)
+                    lr.fit(embedding_train, labels[is_train])
+                    preds_lr = lr.predict(embedding_test)
+                    preds_train_lr = lr.predict(embedding_train)
 
-                        f1_train = sklearn.metrics.f1_score(labels[is_train], preds_train_lr, average="macro", zero_division=0)
-                        loss_train = sklearn.metrics.log_loss(labels[is_train], lr.predict_proba(embedding_train))
+                    f1_train = sklearn.metrics.f1_score(labels[is_train], preds_train_lr, average="macro", zero_division=0)
+                    loss_train = sklearn.metrics.log_loss(labels[is_train], lr.predict_proba(embedding_train))
 
-                        f1 = sklearn.metrics.f1_score(labels[is_test], preds_lr, average="macro", zero_division=0)
-                        recall = sklearn.metrics.recall_score(labels[is_test], preds_lr, average="macro", zero_division=0)
-                        precision = sklearn.metrics.precision_score(labels[is_test], preds_lr, average="macro", zero_division=0)
-                        accuracy = sklearn.metrics.accuracy_score(labels[is_test], preds_lr)
-                        results.append(f1)
-                        print(f"LR {num_samples_per_class}  train f1: {f1_train} loss: {loss_train} f1: {f1} recall: {recall} precision: {precision} accuracy: {accuracy}")
+                    f1 = sklearn.metrics.f1_score(labels[is_test], preds_lr, average="macro", zero_division=0)
+                    recall = sklearn.metrics.recall_score(labels[is_test], preds_lr, average="macro", zero_division=0)
+                    precision = sklearn.metrics.precision_score(labels[is_test], preds_lr, average="macro", zero_division=0)
+                    accuracy = sklearn.metrics.accuracy_score(labels[is_test], preds_lr)
+                    results.append(f1)
+                    print(f"LR 1  train f1: {f1_train} loss: {loss_train} f1: {f1} recall: {recall} precision: {precision} accuracy: {accuracy}")
 
 
                     lr_results[random_seed] = np.array(results)

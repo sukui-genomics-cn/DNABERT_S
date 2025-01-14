@@ -9,7 +9,7 @@ import torch.nn as nn
 # from textaugment import EDA
 from safetensors import safe_open
 from tqdm import tqdm
-from train_utils.contrastive_utils import HardConLoss, iMIXConLoss, PairHardConLoss
+from train_utils.contrastive_utils import HardConLoss, iMIXConLoss, PairHardConLoss, PairClassHardConLoss
 
 class Trainer(nn.Module):
     def __init__(self, model, tokenizer, optimizer, train_loader, val_loader, args):
@@ -24,7 +24,7 @@ class Trainer(nn.Module):
         if args.con_method == 'mutate':
             self.data_mutate = None
         self.hard_loss = HardConLoss(temperature=self.args.temperature).cuda()
-        self.pair_hard_loss = PairHardConLoss(temperature=self.args.temperature).cuda()
+        self.pair_hard_loss = PairClassHardConLoss(temperature=self.args.temperature).cuda()
         self.imix_loss = iMIXConLoss(temperature=self.args.temperature).cuda()
         self.curriculum = args.curriculum
 
@@ -153,17 +153,19 @@ class Trainer(nn.Module):
         for epoch in range(self.args.epochs):
             if self.curriculum:
                 if self.args.epochs >=3:
-                    if (epoch >= int(self.args.epochs/3)) & (epoch < int(self.args.epochs/3)+1):
-                        load_dir = os.path.join(self.args.resPath, str(self.last_saved_step))
-                        if os.path.exists(load_dir):
-                            os.makedirs(load_dir, exist_ok=True)
-                        state_dict = {}
-                        with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
-                            for key in f.keys():
-                                state_dict[key] = f.get_tensor(key)
-                        self.model.module.dnabert2.load_state_dict(state_dict)
-                        self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
-                        print('Curriculum learning: load model trained with stage I')
+                    # if (epoch >= int(self.args.epochs/3)) & (epoch < int(self.args.epochs/3)+1):
+                    #     load_dir = os.path.join(self.args.resPath, str(self.last_saved_step))
+                    #     if os.path.exists(load_dir):
+                    #         os.makedirs(load_dir, exist_ok=True)
+                    #     state_dict = {}
+                    #     with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
+                    #         for key in f.keys():
+                    #             state_dict[key] = f.get_tensor(key)
+                    #     for key, value in state_dict.items():
+                    #         print(key, value.shape())
+                    #     self.model.module.dnabert2.load_state_dict(state_dict)
+                    #     self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
+                    #     print(f'Curriculum learning: load model trained with stage I. epoch: {epoch}.  {load_dir}')
                     for j, batch in enumerate(epoch_iterator):
                         input_ids, attention_mask, pairsimi = self.prepare_pairwise_input(batch)
                         if epoch < int(self.args.epochs/3):
@@ -210,6 +212,7 @@ class Trainer(nn.Module):
                         losses = self.pair_hard_loss(feat1, feat2, pairsimi)
                         val_loss += losses["instdisc_loss"]
             val_loss = val_loss.item()/(j+1)
+            print(f"Step: {step}, Val Loss: {val_loss:.4f}")
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_checkpoint = step

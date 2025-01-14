@@ -76,9 +76,21 @@ class GeneStructureDataset(Dataset):
         with open(data_path, "r") as f:
             data_tmp = f.read().strip().split("\n")
         data = []
+        self.cds_files = []
+        self.intergenic_files = []
+        self.intron_files = []
         for path in data_tmp:
             if os.path.exists(path):
                 data.append(path)
+                file_type = os.path.basename(path).split("_")[-1].split(".")[0]
+                if file_type == "cds":
+                    self.cds_files.append(path)
+                elif file_type == "intergenic":
+                    self.intergenic_files.append(path)
+                elif file_type == "intron":
+                    self.intron_files.append(path)
+                else:
+                    logging.warning(f"File type {file_type} not recognized.")
             else:
                 logging.warning(f"File {path} does not exist.")
         # down sample in val dataset
@@ -138,3 +150,25 @@ class GeneStructureContrastDataset(GeneStructureDataset):
             pairsmi = torch.tensor(0, dtype=torch.long)
 
         return {'seq1': seq1, 'seq2': seq2, 'pairsimi': pairsmi}
+
+
+class GeneStructureContrastTripleDataset(GeneStructureDataset):
+    def __len__(self):
+        return len(self.intergenic_files)
+
+    def __getitem__(self, idx):
+        cds_file = self.intergenic_files[idx]
+        seq_cds = self.read_data(cds_file)
+        intron_file = self.intron_files[np.random.choice(len(self.intron_files), 1, replace=False)[0]]
+        seq_intron = self.read_data(intron_file)
+        # intergenic_file = self.intergenic_files[np.random.choice(len(self.intergenic_files), 1, replace=False)[0]]
+        # seq_intergenic = self.read_data(intergenic_file)
+
+        return {'seq1': seq_cds, 'seq2': seq_intron, 'pairsimi': torch.tensor(0, dtype=torch.long)}
+
+    def read_data(self, path):
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        assert "seq" in data, f"seq not in data: {data.keys()}"
+        seq = data["seq"][:self.max_length]
+        return seq

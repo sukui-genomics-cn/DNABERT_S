@@ -85,7 +85,7 @@ class GeneStructureDataset(Dataset):
         if "val" in split and len(data) > 1000:
             logging.info(f"Down sampling {len(data)} to 1000, from {split} dataset")
             data = np.random.choice(data, 1000, replace=False).tolist()
-        self.sequences = data
+        self.sequences = data[:10000]
         self.max_length = max_length
         self.labels = None
         self.tokenizer: PreTrainedTokenizerBase = tokenizer

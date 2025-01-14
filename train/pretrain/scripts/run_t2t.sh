@@ -12,11 +12,11 @@ python main_t2t.py \
     --train_dataname inter_intron_cds_sample_chunks_1998 \
     --val_dataname inter_intron_cds_sample_chunks_1998 \
     --seed 1 \
-    --logging_step 10000 \
-    --logging_num 12 \
-    --max_length 2000 \
-    --train_batch_size 4 \
-    --val_batch_size 4 \
+    --logging_step 400 \
+    --logging_num 1000 \
+    --max_length 1000 \
+    --train_batch_size 8 \
+    --val_batch_size 2 \
     --lr 3e-06 \
     --lr_scale 100 \
     --epochs 3 \

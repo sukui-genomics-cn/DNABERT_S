@@ -74,6 +74,52 @@ class PairHardConLoss(HardConLoss):
         return losses
 
 
+class PairClassHardConLoss(HardConLoss):
+
+    def forward(self, features_1, features_2, classes=2):
+        losses = {}
+
+        device = (torch.device('cuda') if features_1.is_cuda else torch.device('cpu'))
+        batch_size = features_1.shape[0]
+
+        features = torch.cat([features_1, features_2], dim=0)
+        mask = torch.zeros(batch_size * classes, batch_size * classes, dtype=torch.bool).to(device)
+        postive_range = torch.arange(0, batch_size * classes, dtype=torch.long).to(device)[::batch_size]
+        for start, end in zip(postive_range[:-1], postive_range[1:]):
+            mask[start:end, start:end] = 1
+        mask[postive_range[-1]:, postive_range[-1]:] = 1
+        mask = torch.tril(mask, diagonal=-1)
+
+        # pos = torch.exp(torch.sum(features_1 * features_2, dim=-1) / self.temperature)
+        # pos = torch.cat([pos, pos], dim=0) # 越相似，值越大， 及对角线上的值最大
+        # all_sim = torch.mm(features, features.t().contiguous())
+        all_sim = self.cosine_similarity(features, features)
+        Pos = torch.exp(all_sim / self.temperature).masked_select(mask).view(classes, batch_size, -1)
+        posimp = Pos.log().exp()
+        pos = (posimp * Pos).sum(dim=-1) / posimp.mean(dim=-1)
+
+        neg = torch.exp(all_sim / self.temperature).masked_select(~mask).view(classes, batch_size, -1)
+
+        negimp = neg.log().exp()
+        Ng = (negimp * neg).sum(dim=-1) / negimp.mean(dim=-1)
+        loss_pos = (-torch.log(pos / (Ng + pos))).mean()
+        losses["instdisc_loss"] = loss_pos
+        return losses
+
+    def cosine_similarity(self, A, B):
+        # 计算点积
+        dot_product = torch.mm(A, B.t().contiguous())
+
+        # 计算模长
+        norm_A = torch.linalg.norm(A, axis=1, keepdims=True)
+        norm_B = torch.linalg.norm(B, axis=1, keepdims=True)
+
+        # 计算余弦相似度
+        cosine_sim = dot_product / (norm_A * norm_B.t().contiguous())
+
+        return cosine_sim
+
+
 class iMIXConLoss(nn.Module):
     def __init__(self, temperature=0.05):
         super(iMIXConLoss, self).__init__()
