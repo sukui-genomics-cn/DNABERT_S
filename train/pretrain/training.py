@@ -153,25 +153,23 @@ class Trainer(nn.Module):
         for epoch in range(self.args.epochs):
             if self.curriculum:
                 if self.args.epochs >=3:
-                    # if (epoch >= int(self.args.epochs/3)) & (epoch < int(self.args.epochs/3)+1):
-                    #     load_dir = os.path.join(self.args.resPath, str(self.last_saved_step))
-                    #     if os.path.exists(load_dir):
-                    #         os.makedirs(load_dir, exist_ok=True)
-                    #     state_dict = {}
-                    #     with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
-                    #         for key in f.keys():
-                    #             state_dict[key] = f.get_tensor(key)
-                    #     for key, value in state_dict.items():
-                    #         print(key, value.shape())
-                    #     self.model.module.dnabert2.load_state_dict(state_dict)
-                    #     self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
-                    #     print(f'Curriculum learning: load model trained with stage I. epoch: {epoch}.  {load_dir}')
+                    if (epoch >= int(self.args.epochs/3)) & (epoch < int(self.args.epochs/3)+1):
+                        load_dir = os.path.join(self.args.resPath, str(self.last_saved_step))
+                        if os.path.exists(load_dir):
+                            os.makedirs(load_dir, exist_ok=True)
+                        state_dict = {}
+                        with safe_open(os.path.join(load_dir, "model.safetensors"), framework="pt", device="cpu") as f:
+                            for key in f.keys():
+                                state_dict[key] = f.get_tensor(key)
+                        self.model.module.dnabert2.load_state_dict(state_dict)
+                        self.model.module.contrast_head.load_state_dict(torch.load(load_dir+'/con_weights.ckpt'))
+                        print(f'Curriculum learning: load model trained with stage I. epoch: {epoch}.  {load_dir}')
                     for j, batch in enumerate(epoch_iterator):
                         input_ids, attention_mask, pairsimi = self.prepare_pairwise_input(batch)
-                        if epoch < int(self.args.epochs/3):
-                            losses = self.train_step(input_ids, attention_mask, pairsimi)
-                        else:
-                            losses = self.train_step(input_ids, attention_mask, pairsimi, curriculum_not_start=False)
+                        # if epoch < int(self.args.epochs/3):
+                        losses = self.train_step(input_ids, attention_mask, pairsimi)
+                        # else:
+                        #     losses = self.train_step(input_ids, attention_mask, pairsimi, curriculum_not_start=False)
                         print(f"Epoch: {epoch}, Iteration: {j}, Loss: {losses['instdisc_loss']:.4f}")
                         if self.gstep%self.args.logging_step==0:
                             self.save_model(step=self.gstep)

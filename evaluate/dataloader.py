@@ -78,7 +78,9 @@ class GeneStructureDataset(Dataset):
         data = []
         for path in data_tmp:
             if os.path.exists(path):
-                data.append(path)
+                file_type = os.path.basename(path).split("_")[-1].split(".")[0]
+                if file_type == "intron" or file_type == "intergenic":
+                    data.append(path)
             else:
                 logging.warning(f"File {path} does not exist.")
         # down sample in val dataset

@@ -52,8 +52,8 @@ def run(args):
         max_length=args.max_length
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=args.val_batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=args.train_batch_size, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=args.val_batch_size, shuffle=False, num_workers=0)
 
     model = DNABert_S(feat_dim=args.feat_dim, mix=args.mix, model_mix_dict=args.dnabert2_mix_dict,
                       curriculum=args.curriculum)

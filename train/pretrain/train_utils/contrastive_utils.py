@@ -75,8 +75,9 @@ class PairHardConLoss(HardConLoss):
 
 
 class PairClassHardConLoss(HardConLoss):
+    temperature = 0.7
 
-    def forward(self, features_1, features_2, classes=2):
+    def forward(self, features_1, features_2, pairsimi, classes=2):
         losses = {}
 
         device = (torch.device('cuda') if features_1.is_cuda else torch.device('cpu'))
@@ -88,7 +89,6 @@ class PairClassHardConLoss(HardConLoss):
         for start, end in zip(postive_range[:-1], postive_range[1:]):
             mask[start:end, start:end] = 1
         mask[postive_range[-1]:, postive_range[-1]:] = 1
-        mask = torch.tril(mask, diagonal=-1)
 
         # pos = torch.exp(torch.sum(features_1 * features_2, dim=-1) / self.temperature)
         # pos = torch.cat([pos, pos], dim=0) # 越相似，值越大， 及对角线上的值最大

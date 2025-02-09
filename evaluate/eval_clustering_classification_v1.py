@@ -51,7 +51,7 @@ def main(args):
                     dest_path=args.data_dir,
                     dataset_name=species,
                     split=sample,
-                    max_length=2000
+                    max_length=1000
                 )
 
                 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=4)
